@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lokal Seenz Poker Payouts</title>
+  <style>
+    /* Light Mode Styles */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f4f4f9;
+      color: #333;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 5px;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .input-group {
+      margin-bottom: 15px;
+    }
+    .input-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .input-group input {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #218838;
+    }
+    .results {
+      margin-top: 20px;
+    }
+    .results h2 {
+      color: #333;
+    }
+    .results ul {
+      list-style-type: none;
+      padding: 0;
+    }
+    .results li {
+      background-color: #f8f9fa;
+      padding: 10px;
+      margin-bottom: 5px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    .error {
+      color: #dc3545;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .dark-mode {
+      background-color: #333;
+      color: #f4f4f9;
+    }
+    .dark-mode .container {
+      background-color: #444;
+      color: #f4f4f9;
+    }
+    .dark-mode h1,
+    .dark-mode .results h2 {
+      color: #f4f4f9;
+    }
+    .dark-mode .results li {
+      background-color: #555;
+      border-color: #666;
+      color: #f4f4f9;
+    }
+    .dark-mode button {
+      background-color: #555;
+    }
+    .dark-mode button:hover {
+      background-color: #666;
+    }
+    .dark-mode .input-group input {
+      background-color: #555;
+      border-color: #666;
+      color: #f4f4f9;
+    }
+    .dark-mode-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 10px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <button class="dark-mode-toggle" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+  <div class="container">
+    <h1>Lokal Seenz Poker Payouts</h1>
+    <div class="subtitle">Developed by Akash Justin Ovian, Copyright © 2025. All Rights Reserved.</div>
+    <div id="inputFields">
+      <div class="input-group">
+        <label for="numPlayers">Number of Players:</label>
+        <input type="number" id="numPlayers" min="2" value="2">
+      </div>
+      <button onclick="generatePlayerInputs()">Generate Player Inputs</button>
+    </div>
+    <div id="playerInputs" style="margin-top: 20px;"></div>
+    <button onclick="calculateSettlements()" style="margin-top: 20px;">Calculate Settlements</button>
+    <div class="results" id="results" style="display: none;">
+      <h2>Settlements:</h2>
+      <ul id="settlementList"></ul>
+    </div>
+    <div class="error" id="errorMessage" style="display: none;"></div>
+  </div>
+  <div class="footer">
+    Developed by Akash Justin Ovian, Copyright © 2025. All Rights Reserved.
+  </div>
+
+  <script>
+    function generatePlayerInputs() {
+      const numPlayers = document.getElementById("numPlayers").value;
+      const playerInputs = document.getElementById("playerInputs");
+      playerInputs.innerHTML = "";
+
+      for (let i = 0; i < numPlayers; i++) {
+        playerInputs.innerHTML += `
+          <div class="input-group">
+            <label for="player${i + 1}Name">Player ${i + 1} Name:</label>
+            <input type="text" id="player${i + 1}Name" placeholder="Enter name">
+          </div>
+          <div class="input-group">
+            <label for="player${i + 1}BuyIn">Player ${i + 1} Buy-In (₹):</label>
+            <input type="number" id="player${i + 1}BuyIn" placeholder="Enter buy-in">
+          </div>
+          <div class="input-group">
+            <label for="player${i + 1}Balance">Player ${i + 1} Final Balance (₹):</label>
+            <input type="number" id="player${i + 1}Balance" placeholder="Enter final balance">
+          </div>
+        `;
+      }
+    }
+
+    function calculateSettlements() {
+      const numPlayers = document.getElementById("numPlayers").value;
+      const players = [];
+      const buyIns = [];
+      const finalBalances = [];
+
+      // Collect player data
+      for (let i = 0; i < numPlayers; i++) {
+        const name = document.getElementById(`player${i + 1}Name`).value;
+        const buyIn = parseFloat(document.getElementById(`player${i + 1}BuyIn`).value);
+        const finalBalance = parseFloat(document.getElementById(`player${i + 1}Balance`).value);
+
+        players.push(name);
+        buyIns.push(buyIn);
+        finalBalances.push(finalBalance);
+      }
+
+      // Validate sum of buy-ins equals sum of final balances
+      const totalBuyIn = buyIns.reduce((sum, val) => sum + val, 0);
+      const totalFinalBalance = finalBalances.reduce((sum, val) => sum + val, 0);
+
+      if (totalBuyIn !== totalFinalBalance) {
+        document.getElementById("errorMessage").innerText = "Error: Sum of buy-ins does not match sum of final balances.";
+        document.getElementById("errorMessage").style.display = "block";
+        document.getElementById("results").style.display = "none";
+        return;
+      } else {
+        document.getElementById("errorMessage").style.display = "none";
+      }
+
+      // Calculate net gains/losses
+      const netGains = [];
+      for (let i = 0; i < numPlayers; i++) {
+        netGains.push(finalBalances[i] - buyIns[i]);
+      }
+
+      // Separate players who owe and are owed
+      const oweMoney = [];
+      const owedMoney = [];
+
+      for (let i = 0; i < numPlayers; i++) {
+        if (netGains[i] < 0) {
+          oweMoney.push({ name: players[i], amount: Math.abs(netGains[i]) });
+        } else if (netGains[i] > 0) {
+          owedMoney.push({ name: players[i], amount: netGains[i] });
+        }
+      }
+
+      // Sort for efficient settlement
+      oweMoney.sort((a, b) => a.amount - b.amount);
+      owedMoney.sort((a, b) => b.amount - a.amount);
+
+      // Settle balances
+      const settlements = [];
+
+      for (let owe of oweMoney) {
+        let oweName = owe.name;
+        let oweAmount = owe.amount;
+
+        for (let owed of owedMoney) {
+          if (owed.amount === 0) continue;
+
+          if (oweAmount <= owed.amount) {
+            settlements.push(`${oweName} pays ${owed.name} ₹${oweAmount.toFixed(2)}`);
+            owed.amount -= oweAmount;
+            oweAmount = 0;
+            break;
+          } else {
+            settlements.push(`${oweName} pays ${owed.name} ₹${owed.amount.toFixed(2)}`);
+            oweAmount -= owed.amount;
+            owed.amount = 0;
+          }
+        }
+      }
+
+      // Display results
+      const resultsDiv = document.getElementById("results");
+      const settlementList = document.getElementById("settlementList");
+      settlementList.innerHTML = "";
+
+      if (settlements.length === 0) {
+        settlementList.innerHTML = "<li>No settlements needed. All balances are even.</li>";
+      } else {
+        settlements.forEach((settlement) => {
+          const li = document.createElement("li");
+          li.textContent = settlement;
+          settlementList.appendChild(li);
+        });
+      }
+
+      resultsDiv.style.display = "block";
+    }
+
+    function toggleDarkMode() {
+      const body = document.body;
+      body.classList.toggle("dark-mode");
+      const darkModeButton = document.querySelector(".dark-mode-toggle");
+      if (body.classList.contains("dark-mode")) {
+        darkModeButton.textContent = "☀️ Light Mode";
+      } else {
+        darkModeButton.textContent = "🌙 Dark Mode";
+      }
+    }
+  </script>
+</body>
+</html>
