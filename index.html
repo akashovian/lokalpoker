@@ -18,13 +18,8 @@
       color: #333;
       margin-bottom: 5px;
     }
-    .subtitle {
-      font-size: 14px;
-      color: #666;
-      margin-bottom: 20px;
-    }
     .container {
-      max-width: 600px;
+      max-width: 800px;
       margin: 0 auto;
       padding: 20px;
       background-color: #fff;
@@ -40,7 +35,7 @@
       margin-bottom: 5px;
       font-weight: bold;
     }
-    .input-group input {
+    .input-group input, .input-group select {
       width: 100%;
       padding: 8px;
       box-sizing: border-box;
@@ -55,6 +50,7 @@
       border-radius: 5px;
       cursor: pointer;
       transition: background-color 0.3s;
+      margin-top: 10px;
     }
     button:hover {
       background-color: #218838;
@@ -64,6 +60,7 @@
     }
     .results h2 {
       color: #333;
+      margin-bottom: 10px;
     }
     .results ul {
       list-style-type: none;
@@ -79,6 +76,18 @@
     .error {
       color: #dc3545;
       font-weight: bold;
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #f8d7da;
+      border-radius: 5px;
+      border: 1px solid #f5c6cb;
+    }
+    .info {
+      color: #0c5460;
+      background-color: #d1ecf1;
+      border: 1px solid #bee5eb;
+      border-radius: 5px;
+      padding: 10px;
       margin-top: 10px;
     }
     .dark-mode {
@@ -104,7 +113,8 @@
     .dark-mode button:hover {
       background-color: #666;
     }
-    .dark-mode .input-group input {
+    .dark-mode .input-group input,
+    .dark-mode .input-group select {
       background-color: #555;
       border-color: #666;
       color: #f4f4f9;
@@ -126,13 +136,67 @@
       font-size: 12px;
       color: #666;
     }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    .dark-mode th {
+      background-color: #555;
+    }
+    .adjustment-options {
+      margin: 15px 0;
+      padding: 15px;
+      background-color: #f9f9f9;
+      border-radius: 5px;
+      border: 1px solid #eee;
+    }
+    .dark-mode .adjustment-options {
+      background-color: #3a3a3a;
+      border-color: #555;
+    }
+    .adjustment-options h3 {
+      margin-top: 0;
+    }
+    .radio-group {
+      margin-bottom: 10px;
+    }
+    .radio-group label {
+      margin-left: 5px;
+    }
+    .hidden {
+      display: none;
+    }
+    .positive {
+      color: #28a745;
+    }
+    .negative {
+      color: #dc3545;
+    }
+    .summary-table {
+      overflow-x: auto;
+    }
+    .total-row {
+      font-weight: bold;
+      background-color: #e9ecef;
+    }
+    .dark-mode .total-row {
+      background-color: #4a4a4a;
+    }
   </style>
 </head>
 <body>
   <button class="dark-mode-toggle" onclick="toggleDarkMode()">🌙 Dark Mode</button>
   <div class="container">
     <h1>Lokal Seenz Poker Payouts</h1>
-    <div class="subtitle">Developed by Akash Justin Ovian, Copyright © 2025. All Rights Reserved.</div>
     <div id="inputFields">
       <div class="input-group">
         <label for="numPlayers">Number of Players:</label>
@@ -142,7 +206,56 @@
     </div>
     <div id="playerInputs" style="margin-top: 20px;"></div>
     <button onclick="calculateSettlements()" style="margin-top: 20px;">Calculate Settlements</button>
+    
+    <div id="adjustmentSection" class="hidden">
+      <div class="info" id="differenceInfo"></div>
+      
+      <div class="adjustment-options">
+        <h3>Adjust Difference By:</h3>
+        <div class="radio-group">
+          <input type="radio" id="adjustAll" name="adjustmentOption" value="all" checked>
+          <label for="adjustAll">Adjust difference across all players (evenly distributed)</label>
+        </div>
+        
+        <div class="radio-group">
+          <input type="radio" id="adjustSingle" name="adjustmentOption" value="single">
+          <label for="adjustSingle">Adjust difference to a single player</label>
+          <div id="singlePlayerOption" class="hidden" style="margin-top: 10px;">
+            <select id="singlePlayerSelect"></select>
+          </div>
+        </div>
+        
+        <div class="radio-group">
+          <input type="radio" id="adjustMultiple" name="adjustmentOption" value="multiple">
+          <label for="adjustMultiple">Adjust difference to multiple players (evenly distributed)</label>
+          <div id="multiplePlayersOption" class="hidden" style="margin-top: 10px;">
+            <div id="multiplePlayersCheckboxes"></div>
+          </div>
+        </div>
+        
+        <button onclick="applyAdjustment()">Apply Adjustment and Calculate</button>
+      </div>
+    </div>
+    
     <div class="results" id="results" style="display: none;">
+      <h2>Player Summary:</h2>
+      <div class="summary-table">
+        <table id="playerSummaryTable">
+          <thead>
+            <tr>
+              <th>Player Name</th>
+              <th>Buy-In (₹)</th>
+              <th>Balance (₹)</th>
+              <th>Adjustment (₹)</th>
+              <th>Final Balance (₹)</th>
+              <th>Net Gain/Loss (₹)</th>
+            </tr>
+          </thead>
+          <tbody id="playerSummaryBody"></tbody>
+          <tfoot id="playerSummaryFoot"></tfoot>
+        </table>
+      </div>
+      
       <h2>Settlements:</h2>
       <ul id="settlementList"></ul>
     </div>
@@ -153,6 +266,9 @@
   </div>
 
   <script>
+    let playersData = [];
+    let difference = 0;
+    
     function generatePlayerInputs() {
       const numPlayers = document.getElementById("numPlayers").value;
       const playerInputs = document.getElementById("playerInputs");
@@ -178,49 +294,163 @@
 
     function calculateSettlements() {
       const numPlayers = document.getElementById("numPlayers").value;
-      const players = [];
+      playersData = [];
       const buyIns = [];
       const finalBalances = [];
 
       // Collect player data
       for (let i = 0; i < numPlayers; i++) {
-        const name = document.getElementById(`player${i + 1}Name`).value;
-        const buyIn = parseFloat(document.getElementById(`player${i + 1}BuyIn`).value);
-        const finalBalance = parseFloat(document.getElementById(`player${i + 1}Balance`).value);
+        const name = document.getElementById(`player${i + 1}Name`).value || `Player ${i + 1}`;
+        const buyIn = parseFloat(document.getElementById(`player${i + 1}BuyIn`).value) || 0;
+        const finalBalance = parseFloat(document.getElementById(`player${i + 1}Balance`).value) || 0;
 
-        players.push(name);
+        playersData.push({
+          name: name,
+          buyIn: buyIn,
+          balance: finalBalance,
+          adjustment: 0,
+          finalBalance: finalBalance
+        });
+        
         buyIns.push(buyIn);
         finalBalances.push(finalBalance);
       }
 
-      // Validate sum of buy-ins equals sum of final balances
+      // Calculate total buy-in and final balance
       const totalBuyIn = buyIns.reduce((sum, val) => sum + val, 0);
       const totalFinalBalance = finalBalances.reduce((sum, val) => sum + val, 0);
-
-      if (totalBuyIn !== totalFinalBalance) {
-        document.getElementById("errorMessage").innerText = "Error: Sum of buy-ins does not match sum of final balances.";
-        document.getElementById("errorMessage").style.display = "block";
-        document.getElementById("results").style.display = "none";
-        return;
+      
+      // Calculate difference
+      difference = totalFinalBalance - totalBuyIn;
+      
+      // Hide results and error messages initially
+      document.getElementById("results").style.display = "none";
+      document.getElementById("errorMessage").style.display = "none";
+      
+      // If there's a difference, show adjustment options
+      if (Math.abs(difference) > 0.01) { // Using small epsilon for floating point comparison
+        document.getElementById("adjustmentSection").classList.remove("hidden");
+        
+        // Show difference information
+        const differenceInfo = document.getElementById("differenceInfo");
+        if (difference > 0) {
+          differenceInfo.innerHTML = `Total balance is <span class="positive">₹${difference.toFixed(2)}</span> more than total buy-in. This amount needs to be subtracted from players.`;
+        } else {
+          differenceInfo.innerHTML = `Total balance is <span class="negative">₹${Math.abs(difference).toFixed(2)}</span> less than total buy-in. This amount needs to be added to players.`;
+        }
+        
+        // Populate player selection dropdowns
+        populatePlayerSelection();
       } else {
-        document.getElementById("errorMessage").style.display = "none";
+        document.getElementById("adjustmentSection").classList.add("hidden");
+        // No adjustment needed, proceed with calculation
+        calculateWithAdjustments();
       }
-
-      // Calculate net gains/losses
-      const netGains = [];
-      for (let i = 0; i < numPlayers; i++) {
-        netGains.push(finalBalances[i] - buyIns[i]);
+    }
+    
+    function populatePlayerSelection() {
+      const singlePlayerSelect = document.getElementById("singlePlayerSelect");
+      const multiplePlayersCheckboxes = document.getElementById("multiplePlayersCheckboxes");
+      
+      // Clear previous options
+      singlePlayerSelect.innerHTML = "";
+      multiplePlayersCheckboxes.innerHTML = "";
+      
+      // Add options for each player
+      playersData.forEach((player, index) => {
+        // For single player dropdown
+        const option = document.createElement("option");
+        option.value = index;
+        option.textContent = player.name;
+        singlePlayerSelect.appendChild(option);
+        
+        // For multiple players checkboxes
+        const checkboxDiv = document.createElement("div");
+        checkboxDiv.innerHTML = `
+          <input type="checkbox" id="player${index}" name="adjustPlayers" value="${index}" checked>
+          <label for="player${index}">${player.name}</label>
+        `;
+        multiplePlayersCheckboxes.appendChild(checkboxDiv);
+      });
+    }
+    
+    // Show/hide options based on radio selection
+    document.getElementById('adjustSingle').addEventListener('change', function() {
+      document.getElementById('singlePlayerOption').classList.toggle('hidden', !this.checked);
+    });
+    
+    document.getElementById('adjustMultiple').addEventListener('change', function() {
+      document.getElementById('multiplePlayersOption').classList.toggle('hidden', !this.checked);
+    });
+    
+    document.getElementById('adjustAll').addEventListener('change', function() {
+      document.getElementById('singlePlayerOption').classList.add('hidden');
+      document.getElementById('multiplePlayersOption').classList.add('hidden');
+    });
+    
+    function applyAdjustment() {
+      const adjustmentOption = document.querySelector('input[name="adjustmentOption"]:checked').value;
+      let selectedPlayers = [];
+      
+      // Determine which players to adjust based on the selected option
+      if (adjustmentOption === 'all') {
+        // All players
+        selectedPlayers = playersData.map((_, index) => index);
+      } else if (adjustmentOption === 'single') {
+        // Single player
+        const selectedIndex = parseInt(document.getElementById('singlePlayerSelect').value);
+        selectedPlayers = [selectedIndex];
+      } else if (adjustmentOption === 'multiple') {
+        // Multiple players
+        const checkboxes = document.querySelectorAll('input[name="adjustPlayers"]:checked');
+        selectedPlayers = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        
+        // If no players selected, show error
+        if (selectedPlayers.length === 0) {
+          document.getElementById("errorMessage").innerText = "Please select at least one player for adjustment.";
+          document.getElementById("errorMessage").style.display = "block";
+          return;
+        }
       }
-
+      
+      // Apply the adjustment
+      const adjustmentPerPlayer = difference / selectedPlayers.length;
+      
+      // Reset adjustments
+      playersData.forEach(player => {
+        player.adjustment = 0;
+        player.finalBalance = player.balance;
+      });
+      
+      // Apply adjustments to selected players
+      selectedPlayers.forEach(index => {
+        playersData[index].adjustment = -adjustmentPerPlayer; // Negative because we're correcting the difference
+        playersData[index].finalBalance = playersData[index].balance + playersData[index].adjustment;
+      });
+      
+      // Proceed with calculation
+      calculateWithAdjustments();
+    }
+    
+    function calculateWithAdjustments() {
+      // Hide adjustment section
+      document.getElementById("adjustmentSection").classList.add("hidden");
+      
+      // Display player summary
+      displayPlayerSummary();
+      
+      // Calculate net gains/losses with adjustments
+      const netGains = playersData.map(player => player.finalBalance - player.buyIn);
+      
       // Separate players who owe and are owed
       const oweMoney = [];
       const owedMoney = [];
 
-      for (let i = 0; i < numPlayers; i++) {
+      for (let i = 0; i < playersData.length; i++) {
         if (netGains[i] < 0) {
-          oweMoney.push({ name: players[i], amount: Math.abs(netGains[i]) });
+          oweMoney.push({ name: playersData[i].name, amount: Math.abs(netGains[i]) });
         } else if (netGains[i] > 0) {
-          owedMoney.push({ name: players[i], amount: netGains[i] });
+          owedMoney.push({ name: playersData[i].name, amount: netGains[i] });
         }
       }
 
@@ -268,15 +498,97 @@
 
       resultsDiv.style.display = "block";
     }
+    
+    function displayPlayerSummary() {
+      const tableBody = document.getElementById("playerSummaryBody");
+      const tableFoot = document.getElementById("playerSummaryFoot");
+      tableBody.innerHTML = "";
+      
+      // Calculate totals
+      let totalBuyIn = 0;
+      let totalBalance = 0;
+      let totalAdjustment = 0;
+      let totalFinalBalance = 0;
+      
+      // Find biggest winner and loser
+      let maxGain = -Infinity;
+      let maxLoss = Infinity;
+      let biggestWinner = null;
+      let biggestLoser = null;
+      
+      playersData.forEach(player => {
+        const netGainLoss = player.finalBalance - player.buyIn;
+        
+        if (netGainLoss > maxGain) {
+          maxGain = netGainLoss;
+          biggestWinner = player.name;
+        }
+        
+        if (netGainLoss < maxLoss) {
+          maxLoss = netGainLoss;
+          biggestLoser = player.name;
+        }
+        
+        totalBuyIn += player.buyIn;
+        totalBalance += player.balance;
+        totalAdjustment += player.adjustment;
+        totalFinalBalance += player.finalBalance;
+      });
+      
+      // Add player rows
+      playersData.forEach(player => {
+        const netGainLoss = player.finalBalance - player.buyIn;
+        const row = document.createElement("tr");
+        
+        // Add emojis for biggest winner and loser
+        let nameWithEmoji = player.name;
+        if (player.name === biggestWinner && netGainLoss > 0) {
+          nameWithEmoji += " 🤑";
+        } else if (player.name === biggestLoser && netGainLoss < 0) {
+          nameWithEmoji += " 🤕";
+        }
+        
+        row.innerHTML = `
+          <td>${nameWithEmoji}</td>
+          <td>₹${player.buyIn.toFixed(2)}</td>
+          <td>₹${player.balance.toFixed(2)}</td>
+          <td class="${player.adjustment > 0 ? 'positive' : player.adjustment < 0 ? 'negative' : ''}">
+            ${player.adjustment !== 0 ? (player.adjustment > 0 ? '+' : '') + player.adjustment.toFixed(2) : '0.00'}
+          </td>
+          <td>₹${player.finalBalance.toFixed(2)}</td>
+          <td class="${netGainLoss > 0 ? 'positive' : netGainLoss < 0 ? 'negative' : ''}">
+            ${netGainLoss > 0 ? '+' : ''}${netGainLoss.toFixed(2)}
+          </td>
+        `;
+        
+        tableBody.appendChild(row);
+      });
+      
+      // Add totals row
+      const totalsRow = document.createElement("tr");
+      totalsRow.className = "total-row";
+      totalsRow.innerHTML = `
+        <td>Totals</td>
+        <td>₹${totalBuyIn.toFixed(2)}</td>
+        <td>₹${totalBalance.toFixed(2)}</td>
+        <td class="${totalAdjustment > 0 ? 'positive' : totalAdjustment < 0 ? 'negative' : ''}">
+          ${totalAdjustment !== 0 ? (totalAdjustment > 0 ? '+' : '') + totalAdjustment.toFixed(2) : '0.00'}
+        </td>
+        <td>₹${totalFinalBalance.toFixed(2)}</td>
+        <td>₹0.00</td>
+      `;
+      
+      tableFoot.innerHTML = "";
+      tableFoot.appendChild(totalsRow);
+    }
 
     function toggleDarkMode() {
-      const body = document.body;
-      body.classList.toggle("dark-mode");
-      const darkModeButton = document.querySelector(".dark-mode-toggle");
-      if (body.classList.contains("dark-mode")) {
-        darkModeButton.textContent = "☀️ Light Mode";
+      document.body.classList.toggle("dark-mode");
+      const button = document.querySelector(".dark-mode-toggle");
+      if (document.body.classList.contains("dark-mode")) {
+        button.textContent = "☀️ Light Mode";
       } else {
-        darkModeButton.textContent = "🌙 Dark Mode";
+        button.textContent = "🌙 Dark Mode";
       }
     }
   </script>
