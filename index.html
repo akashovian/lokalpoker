@@ -18,6 +18,7 @@
     h1 {
       color: #333;
       margin-bottom: 5px;
+      font-size: 24px;
     }
     .container {
       max-width: 800px;
@@ -38,13 +39,14 @@
     }
     .input-group input, .input-group select {
       width: 100%;
-      padding: 8px;
+      padding: 10px;
       box-sizing: border-box;
       border: 1px solid #ccc;
       border-radius: 5px;
+      font-size: 16px; /* Better for mobile */
     }
     button {
-      padding: 10px 20px;
+      padding: 12px 20px;
       background-color: #28a745;
       color: white;
       border: none;
@@ -52,6 +54,7 @@
       cursor: pointer;
       transition: background-color 0.3s;
       margin-top: 10px;
+      font-size: 16px; /* Better for mobile */
     }
     button:hover {
       background-color: #218838;
@@ -62,6 +65,7 @@
     .results h2 {
       color: #333;
       margin-bottom: 10px;
+      font-size: 20px;
     }
     .results ul {
       list-style-type: none;
@@ -130,6 +134,7 @@
       border: none;
       border-radius: 5px;
       cursor: pointer;
+      z-index: 1000;
     }
     .footer {
       text-align: center;
@@ -141,6 +146,7 @@
       width: 100%;
       border-collapse: collapse;
       margin: 15px 0;
+      font-size: 14px;
     }
     th, td {
       padding: 10px;
@@ -212,9 +218,57 @@
     #snapshot-container {
       padding: 40px;
       background-color: white;
+      width: 100%;
+      box-sizing: border-box;
     }
     .dark-mode #snapshot-container {
       background-color: #444;
+    }
+    .scrollable-container {
+      max-height: 70vh;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    /* Mobile-specific styles */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      .container {
+        padding: 15px;
+      }
+      h1 {
+        font-size: 22px;
+      }
+      table {
+        font-size: 12px;
+      }
+      th, td {
+        padding: 8px 5px;
+      }
+      .dark-mode-toggle {
+        top: 10px;
+        right: 10px;
+        padding: 8px;
+      }
+    }
+    /* Print styles for better export */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #snapshot-container, #snapshot-container * {
+        visibility: visible;
+      }
+      #snapshot-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -264,21 +318,23 @@
     
     <div class="results" id="results" style="display: none;">
       <h2>Player Summary:</h2>
-      <div class="summary-table">
-        <table id="playerSummaryTable">
-          <thead>
-            <tr>
-              <th>Player Name</th>
-              <th>Buy-In (₹)</th>
-              <th>Balance (₹)</th>
-              <th>Adjustment (₹)</th>
-              <th>Final Balance (₹)</th>
-              <th>Net Gain/Loss (₹)</th>
-            </tr>
-          </thead>
-          <tbody id="playerSummaryBody"></tbody>
-          <tfoot id="playerSummaryFoot"></tfoot>
-        </table>
+      <div class="scrollable-container">
+        <div class="summary-table">
+          <table id="playerSummaryTable">
+            <thead>
+              <tr>
+                <th>Player Name</th>
+                <th>Buy-In (₹)</th>
+                <th>Balance (₹)</th>
+                <th>Adjustment (₹)</th>
+                <th>Final Balance (₹)</th>
+                <th>Net Gain/Loss (₹)</th>
+              </tr>
+            </thead>
+            <tbody id="playerSummaryBody"></tbody>
+            <tfoot id="playerSummaryFoot"></tfoot>
+          </table>
+        </div>
       </div>
       
       <div class="action-info" id="actionInfo"></div>
@@ -660,6 +716,10 @@
     }
     
     function exportSnapshot() {
+      // Show loading indicator
+      const originalText = document.querySelector('.export-btn').textContent;
+      document.querySelector('.export-btn').textContent = 'Generating...';
+      
       // Create a temporary container for the snapshot with padding
       const snapshotContainer = document.getElementById("snapshot-container");
       snapshotContainer.innerHTML = "";
@@ -679,7 +739,14 @@
       
       // Use html2canvas to capture the snapshot container with padding
       html2canvas(snapshotContainer, {
-        backgroundColor: getComputedStyle(document.body).backgroundColor
+        backgroundColor: getComputedStyle(document.body).backgroundColor,
+        scale: 2, // Higher resolution for better quality
+        logging: false,
+        useCORS: true,
+        scrollX: 0,
+        scrollY: 0,
+        width: snapshotContainer.scrollWidth,
+        height: snapshotContainer.scrollHeight
       }).then(canvas => {
         // Generate filename with current date
         const now = new Date();
@@ -692,11 +759,22 @@
         const link = document.createElement("a");
         link.download = fileName;
         link.href = canvas.toDataURL("image/jpeg", 0.9);
+        
+        // Trigger download
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
         
         // Hide the snapshot container again
         snapshotContainer.classList.add("hidden");
         snapshotContainer.innerHTML = "";
+        
+        // Restore button text
+        document.querySelector('.export-btn').textContent = originalText;
+      }).catch(error => {
+        console.error('Error generating snapshot:', error);
+        alert('Error generating snapshot. Please try again.');
+        document.querySelector('.export-btn').textContent = originalText;
       });
     }
 
