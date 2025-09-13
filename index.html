@@ -43,7 +43,7 @@
       box-sizing: border-box;
       border: 1px solid #ccc;
       border-radius: 5px;
-      font-size: 16px; /* Better for mobile */
+      font-size: 16px;
     }
     button {
       padding: 12px 20px;
@@ -54,7 +54,7 @@
       cursor: pointer;
       transition: background-color 0.3s;
       margin-top: 10px;
-      font-size: 16px; /* Better for mobile */
+      font-size: 16px;
     }
     button:hover {
       background-color: #218838;
@@ -255,56 +255,36 @@
         right: 10px;
         padding: 8px;
       }
-      /* Ensure table fits on mobile in snapshot */
-      #snapshot-container table {
-        width: 100% !important;
-        max-width: 100% !important;
-      }
-      #snapshot-container th, 
-      #snapshot-container td {
-        padding: 6px 4px;
-        font-size: 12px;
-      }
     }
-    /* Print styles for better export */
-    @media print {
-      body * {
-        visibility: hidden;
-      }
-      #snapshot-container, #snapshot-container * {
-        visibility: visible;
-      }
-      #snapshot-container {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-      }
-    }
-    /* Special styling for snapshot container */
-    .snapshot-table-container {
-      width: 100%;
-      overflow: hidden;
-    }
-    .snapshot-table {
+    /* Special styling for export table */
+    .export-table {
       width: 100%;
       table-layout: fixed;
+      border-collapse: collapse;
+      margin: 15px 0;
+      font-size: 12px;
     }
-    .snapshot-table th:nth-child(1),
-    .snapshot-table td:nth-child(1) {
+    .export-table th, 
+    .export-table td {
+      padding: 6px 4px;
+      border: 1px solid #ddd;
+      word-wrap: break-word;
+    }
+    .export-table th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+    .export-table .name-col {
       width: 20%;
     }
-    .snapshot-table th:nth-child(2),
-    .snapshot-table td:nth-child(2),
-    .snapshot-table th:nth-child(3),
-    .snapshot-table td:nth-child(3),
-    .snapshot-table th:nth-child(4),
-    .snapshot-table td:nth-child(4),
-    .snapshot-table th:nth-child(5),
-    .snapshot-table td:nth-child(5),
-    .snapshot-table th:nth-child(6),
-    .snapshot-table td:nth-child(6) {
+    .export-table .data-col {
       width: 16%;
+    }
+    .export-summary {
+      margin: 20px 0;
+      padding: 15px;
+      background-color: #f9f9f9;
+      border-radius: 5px;
     }
   </style>
 </head>
@@ -756,48 +736,143 @@
       const originalText = document.querySelector('.export-btn').textContent;
       document.querySelector('.export-btn').textContent = 'Generating...';
       
-      // Create a temporary container for the snapshot with padding
+      // Create a custom export content with simplified table
       const snapshotContainer = document.getElementById("snapshot-container");
-      snapshotContainer.innerHTML = "";
+      snapshotContainer.innerHTML = '';
       
-      // Clone the results section
-      const resultsClone = document.getElementById("results").cloneNode(true);
+      // Create a simplified version for export
+      const exportContent = document.createElement('div');
+      exportContent.style.padding = '20px';
+      exportContent.style.backgroundColor = 'white';
+      exportContent.style.color = 'black';
+      exportContent.style.fontFamily = 'Arial, sans-serif';
       
-      // Remove the export button from the clone
-      const exportButton = resultsClone.querySelector('.export-btn');
-      if (exportButton) {
-        exportButton.remove();
+      // Add title
+      const title = document.createElement('h2');
+      title.textContent = 'Lokal Seenz Poker Payouts Summary';
+      title.style.textAlign = 'center';
+      title.style.marginBottom = '20px';
+      exportContent.appendChild(title);
+      
+      // Add action info if exists
+      const actionInfo = document.getElementById("actionInfo");
+      if (actionInfo.style.display !== 'none') {
+        const infoDiv = document.createElement('div');
+        infoDiv.style.padding = '10px';
+        infoDiv.style.marginBottom = '15px';
+        infoDiv.style.backgroundColor = '#e7f3ff';
+        infoDiv.style.borderLeft = '4px solid #0066cc';
+        infoDiv.innerHTML = actionInfo.innerHTML;
+        exportContent.appendChild(infoDiv);
       }
       
-      // Create a special table for the snapshot that will fit properly
-      const summaryTable = resultsClone.querySelector('#playerSummaryTable');
-      if (summaryTable) {
-        summaryTable.className = 'snapshot-table';
-        summaryTable.parentNode.className = 'snapshot-table-container';
+      // Create simplified table for export
+      const table = document.createElement('table');
+      table.className = 'export-table';
+      
+      // Create header
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      ['Player', 'Buy-In', 'Balance', 'Adjustment', 'Final', 'Net'].forEach(text => {
+        const th = document.createElement('th');
+        th.textContent = text;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+      
+      // Create body
+      const tbody = document.createElement('tbody');
+      playersData.forEach(player => {
+        const netGainLoss = player.finalBalance - player.buyIn;
+        const row = document.createElement('tr');
+        
+        // Add emojis for biggest winner and loser
+        let nameWithEmoji = player.name;
+        if (player.name === playersData.reduce((max, p) => (p.finalBalance - p.buyIn) > (max.finalBalance - max.buyIn) ? p : playersData[0]).name && netGainLoss > 0) {
+          nameWithEmoji += " 🤑";
+        } else if (player.name === playersData.reduce((min, p) => (p.finalBalance - p.buyIn) < (min.finalBalance - min.buyIn) ? p : playersData[0]).name && netGainLoss < 0) {
+          nameWithEmoji += " 🤕";
+        }
+        
+        row.innerHTML = `
+          <td class="name-col">${nameWithEmoji}</td>
+          <td class="data-col">₹${player.buyIn.toFixed(2)}</td>
+          <td class="data-col">₹${player.balance.toFixed(2)}</td>
+          <td class="data-col ${player.adjustment > 0 ? 'positive' : player.adjustment < 0 ? 'negative' : ''}">
+            ${player.adjustment !== 0 ? (player.adjustment > 0 ? '+' : '') + player.adjustment.toFixed(2) : '0.00'}
+          </td>
+          <td class="data-col">₹${player.finalBalance.toFixed(2)}</td>
+          <td class="data-col ${netGainLoss > 0 ? 'positive' : netGainLoss < 0 ? 'negative' : ''}">
+            ${netGainLoss > 0 ? '+' : ''}${netGainLoss.toFixed(2)}
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+      
+      // Add totals row
+      const totalBuyIn = playersData.reduce((sum, player) => sum + player.buyIn, 0);
+      const totalBalance = playersData.reduce((sum, player) => sum + player.balance, 0);
+      const totalAdjustment = playersData.reduce((sum, player) => sum + player.adjustment, 0);
+      const totalFinalBalance = playersData.reduce((sum, player) => sum + player.finalBalance, 0);
+      
+      const footerRow = document.createElement('tr');
+      footerRow.style.fontWeight = 'bold';
+      footerRow.style.backgroundColor = '#e9ecef';
+      footerRow.innerHTML = `
+        <td>Totals</td>
+        <td>₹${totalBuyIn.toFixed(2)}</td>
+        <td>₹${totalBalance.toFixed(2)}</td>
+        <td class="${totalAdjustment > 0 ? 'positive' : totalAdjustment < 0 ? 'negative' : ''}">
+          ${totalAdjustment !== 0 ? (totalAdjustment > 0 ? '+' : '') + totalAdjustment.toFixed(2) : '0.00'}
+        </td>
+        <td>₹${totalFinalBalance.toFixed(2)}</td>
+        <td>₹0.00</td>
+      `;
+      tbody.appendChild(footerRow);
+      
+      table.appendChild(tbody);
+      exportContent.appendChild(table);
+      
+      // Add settlements
+      const settlementList = document.getElementById("settlementList");
+      if (settlementList.children.length > 0) {
+        const settlementsTitle = document.createElement('h3');
+        settlementsTitle.textContent = 'Settlements:';
+        settlementsTitle.style.marginTop = '20px';
+        exportContent.appendChild(settlementsTitle);
+        
+        const settlementsList = document.createElement('ul');
+        settlementsList.style.paddingLeft = '20px';
+        
+        Array.from(settlementList.children).forEach(item => {
+          const li = document.createElement('li');
+          li.textContent = item.textContent;
+          li.style.marginBottom = '5px';
+          settlementsList.appendChild(li);
+        });
+        
+        exportContent.appendChild(settlementsList);
       }
       
-      // Add the clone to the snapshot container
-      snapshotContainer.appendChild(resultsClone);
+      // Add footer
+      const footer = document.createElement('div');
+      footer.style.marginTop = '20px';
+      footer.style.textAlign = 'center';
+      footer.style.fontSize = '12px';
+      footer.style.color = '#666';
+      footer.textContent = 'Developed by Akash Justin Ovian, Copyright © 2025. All Rights Reserved.';
+      exportContent.appendChild(footer);
+      
+      snapshotContainer.appendChild(exportContent);
       snapshotContainer.classList.remove("hidden");
       
-      // Use html2canvas to capture the snapshot container with padding
-      html2canvas(snapshotContainer, {
-        backgroundColor: getComputedStyle(document.body).backgroundColor,
-        scale: 2, // Higher resolution for better quality
+      // Use html2canvas to capture the export content
+      html2canvas(exportContent, {
+        backgroundColor: '#ffffff',
+        scale: 2,
         logging: false,
-        useCORS: true,
-        scrollX: 0,
-        scrollY: 0,
-        width: snapshotContainer.scrollWidth,
-        height: snapshotContainer.scrollHeight,
-        onclone: function(clonedDoc) {
-          // Ensure the table is properly formatted in the clone
-          const table = clonedDoc.querySelector('.snapshot-table');
-          if (table) {
-            table.style.width = '100%';
-            table.style.tableLayout = 'fixed';
-          }
-        }
+        useCORS: true
       }).then(canvas => {
         // Generate filename with current date
         const now = new Date();
