@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lokal Seenz Poker Payouts</title>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
   <style>
     /* Light Mode Styles */
     body {
@@ -191,6 +192,30 @@
     .dark-mode .total-row {
       background-color: #4a4a4a;
     }
+    .action-info {
+      margin: 15px 0;
+      padding: 15px;
+      background-color: #e7f3ff;
+      border-radius: 5px;
+      border-left: 4px solid #0066cc;
+    }
+    .dark-mode .action-info {
+      background-color: #2a4365;
+      border-left-color: #63b3ed;
+    }
+    .export-btn {
+      background-color: #0066cc;
+    }
+    .export-btn:hover {
+      background-color: #0055aa;
+    }
+    #snapshot-container {
+      padding: 40px;
+      background-color: white;
+    }
+    .dark-mode #snapshot-container {
+      background-color: #444;
+    }
   </style>
 </head>
 <body>
@@ -256,6 +281,10 @@
         </table>
       </div>
       
+      <div class="action-info" id="actionInfo"></div>
+      
+      <button class="export-btn" onclick="exportSnapshot()">Export Snapshot as JPEG</button>
+      
       <h2>Settlements:</h2>
       <ul id="settlementList"></ul>
     </div>
@@ -265,9 +294,14 @@
     Developed by Akash Justin Ovian, Copyright © 2025. All Rights Reserved.
   </div>
 
+  <!-- Hidden container for snapshot with padding -->
+  <div id="snapshot-container" class="hidden"></div>
+
   <script>
     let playersData = [];
     let difference = 0;
+    let adjustmentMethod = "";
+    let selectedPlayersForAdjustment = [];
     
     function generatePlayerInputs() {
       const numPlayers = document.getElementById("numPlayers").value;
@@ -343,6 +377,8 @@
         populatePlayerSelection();
       } else {
         document.getElementById("adjustmentSection").classList.add("hidden");
+        adjustmentMethod = "none";
+        selectedPlayersForAdjustment = [];
         // No adjustment needed, proceed with calculation
         calculateWithAdjustments();
       }
@@ -390,23 +426,24 @@
     
     function applyAdjustment() {
       const adjustmentOption = document.querySelector('input[name="adjustmentOption"]:checked').value;
-      let selectedPlayers = [];
+      adjustmentMethod = adjustmentOption;
+      selectedPlayersForAdjustment = [];
       
       // Determine which players to adjust based on the selected option
       if (adjustmentOption === 'all') {
         // All players
-        selectedPlayers = playersData.map((_, index) => index);
+        selectedPlayersForAdjustment = playersData.map((_, index) => index);
       } else if (adjustmentOption === 'single') {
         // Single player
         const selectedIndex = parseInt(document.getElementById('singlePlayerSelect').value);
-        selectedPlayers = [selectedIndex];
+        selectedPlayersForAdjustment = [selectedIndex];
       } else if (adjustmentOption === 'multiple') {
         // Multiple players
         const checkboxes = document.querySelectorAll('input[name="adjustPlayers"]:checked');
-        selectedPlayers = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        selectedPlayersForAdjustment = Array.from(checkboxes).map(cb => parseInt(cb.value));
         
         // If no players selected, show error
-        if (selectedPlayers.length === 0) {
+        if (selectedPlayersForAdjustment.length === 0) {
           document.getElementById("errorMessage").innerText = "Please select at least one player for adjustment.";
           document.getElementById("errorMessage").style.display = "block";
           return;
@@ -414,7 +451,7 @@
       }
       
       // Apply the adjustment
-      const adjustmentPerPlayer = difference / selectedPlayers.length;
+      const adjustmentPerPlayer = difference / selectedPlayersForAdjustment.length;
       
       // Reset adjustments
       playersData.forEach(player => {
@@ -423,7 +460,7 @@
       });
       
       // Apply adjustments to selected players
-      selectedPlayers.forEach(index => {
+      selectedPlayersForAdjustment.forEach(index => {
         playersData[index].adjustment = -adjustmentPerPlayer; // Negative because we're correcting the difference
         playersData[index].finalBalance = playersData[index].balance + playersData[index].adjustment;
       });
@@ -502,6 +539,7 @@
     function displayPlayerSummary() {
       const tableBody = document.getElementById("playerSummaryBody");
       const tableFoot = document.getElementById("playerSummaryFoot");
+      const actionInfo = document.getElementById("actionInfo");
       tableBody.innerHTML = "";
       
       // Calculate totals
@@ -580,6 +618,86 @@
       
       tableFoot.innerHTML = "";
       tableFoot.appendChild(totalsRow);
+      
+      // Show action info
+      if (Math.abs(difference) > 0.01) {
+        let actionText = "";
+        const absDifference = Math.abs(difference);
+        
+        if (adjustmentMethod === "all") {
+          if (difference > 0) {
+            actionText = `₹${absDifference.toFixed(2)} was subtracted evenly across all players.`;
+          } else {
+            actionText = `₹${absDifference.toFixed(2)} was added evenly across all players.`;
+          }
+        } else if (adjustmentMethod === "single") {
+          const playerName = playersData[selectedPlayersForAdjustment[0]].name;
+          if (difference > 0) {
+            actionText = `₹${absDifference.toFixed(2)} was subtracted from ${playerName}.`;
+          } else {
+            actionText = `₹${absDifference.toFixed(2)} was added to ${playerName}.`;
+          }
+        } else if (adjustmentMethod === "multiple") {
+          const playerNames = selectedPlayersForAdjustment.map(index => playersData[index].name).join(", ");
+          if (difference > 0) {
+            actionText = `₹${absDifference.toFixed(2)} was subtracted evenly from ${playerNames}.`;
+          } else {
+            actionText = `₹${absDifference.toFixed(2)} was added evenly to ${playerNames}.`;
+          }
+        } else {
+          if (difference > 0) {
+            actionText = `Total balance was ₹${absDifference.toFixed(2)} more than total buy-in. No adjustment was needed.`;
+          } else {
+            actionText = `Total balance was ₹${absDifference.toFixed(2)} less than total buy-in. No adjustment was needed.`;
+          }
+        }
+        
+        actionInfo.innerHTML = actionText;
+        actionInfo.style.display = "block";
+      } else {
+        actionInfo.style.display = "none";
+      }
+    }
+    
+    function exportSnapshot() {
+      // Create a temporary container for the snapshot with padding
+      const snapshotContainer = document.getElementById("snapshot-container");
+      snapshotContainer.innerHTML = "";
+      
+      // Clone the results section
+      const resultsClone = document.getElementById("results").cloneNode(true);
+      
+      // Remove the export button from the clone
+      const exportButton = resultsClone.querySelector('.export-btn');
+      if (exportButton) {
+        exportButton.remove();
+      }
+      
+      // Add the clone to the snapshot container
+      snapshotContainer.appendChild(resultsClone);
+      snapshotContainer.classList.remove("hidden");
+      
+      // Use html2canvas to capture the snapshot container with padding
+      html2canvas(snapshotContainer, {
+        backgroundColor: getComputedStyle(document.body).backgroundColor
+      }).then(canvas => {
+        // Generate filename with current date
+        const now = new Date();
+        const monthNames = ["January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"
+        ];
+        const fileName = `${monthNames[now.getMonth()]}_${now.getDate()}_${now.getFullYear()}_Poker_Payouts.jpg`;
+        
+        // Create download link
+        const link = document.createElement("a");
+        link.download = fileName;
+        link.href = canvas.toDataURL("image/jpeg", 0.9);
+        link.click();
+        
+        // Hide the snapshot container again
+        snapshotContainer.classList.add("hidden");
+        snapshotContainer.innerHTML = "";
+      });
     }
 
     function toggleDarkMode() {
