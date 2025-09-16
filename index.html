@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lokal Seenz Poker Payouts</title>
-  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
   <style>
     /* Light Mode Styles */
     body {
@@ -216,15 +217,6 @@
     .export-btn:hover {
       background-color: #0055aa;
     }
-    #snapshot-container {
-      padding: 40px;
-      background-color: white;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    .dark-mode #snapshot-container {
-      background-color: #444;
-    }
     .scrollable-container {
       max-height: 70vh;
       overflow-y: auto;
@@ -255,36 +247,6 @@
         right: 10px;
         padding: 8px;
       }
-    }
-    /* Special styling for export table */
-    .export-table {
-      width: 100%;
-      table-layout: fixed;
-      border-collapse: collapse;
-      margin: 15px 0;
-      font-size: 12px;
-    }
-    .export-table th, 
-    .export-table td {
-      padding: 6px 4px;
-      border: 1px solid #ddd;
-      word-wrap: break-word;
-    }
-    .export-table th {
-      background-color: #f2f2f2;
-      font-weight: bold;
-    }
-    .export-table .name-col {
-      width: 20%;
-    }
-    .export-table .data-col {
-      width: 16%;
-    }
-    .export-summary {
-      margin: 20px 0;
-      padding: 15px;
-      background-color: #f9f9f9;
-      border-radius: 5px;
     }
   </style>
 </head>
@@ -340,11 +302,11 @@
             <thead>
               <tr>
                 <th>Player Name</th>
-                <th>Buy-In (₹)</th>
-                <th>Balance (₹)</th>
-                <th>Adjustment (₹)</th>
-                <th>Final Balance (₹)</th>
-                <th>Net Gain/Loss (₹)</th>
+                <th>Buy-In</th>
+                <th>Balance</th>
+                <th>Adjustment</th>
+                <th>Final Balance</th>
+                <th>Net Gain/Loss</th>
               </tr>
             </thead>
             <tbody id="playerSummaryBody"></tbody>
@@ -355,7 +317,7 @@
       
       <div class="action-info" id="actionInfo"></div>
       
-      <button class="export-btn" onclick="exportSnapshot()">Export Snapshot as JPEG</button>
+      <button class="export-btn" onclick="exportPDF()">Export as PDF</button>
       
       <h2>Settlements:</h2>
       <ul id="settlementList"></ul>
@@ -366,10 +328,10 @@
     Developed by Akash Justin Ovian, Copyright © 2025. All Rights Reserved.
   </div>
 
-  <!-- Hidden container for snapshot with padding -->
-  <div id="snapshot-container" class="hidden"></div>
-
   <script>
+    // Initialize jsPDF
+    window.jsPDF = window.jspdf.jsPDF;
+    
     let playersData = [];
     let difference = 0;
     let adjustmentMethod = "";
@@ -387,11 +349,11 @@
             <input type="text" id="player${i + 1}Name" placeholder="Enter name">
           </div>
           <div class="input-group">
-            <label for="player${i + 1}BuyIn">Player ${i + 1} Buy-In (₹):</label>
+            <label for="player${i + 1}BuyIn">Player ${i + 1} Buy-In:</label>
             <input type="number" id="player${i + 1}BuyIn" placeholder="Enter buy-in">
           </div>
           <div class="input-group">
-            <label for="player${i + 1}Balance">Player ${i + 1} Final Balance (₹):</label>
+            <label for="player${i + 1}Balance">Player ${i + 1} Final Balance:</label>
             <input type="number" id="player${i + 1}Balance" placeholder="Enter final balance">
           </div>
         `;
@@ -440,9 +402,9 @@
         // Show difference information
         const differenceInfo = document.getElementById("differenceInfo");
         if (difference > 0) {
-          differenceInfo.innerHTML = `Total balance is <span class="positive">₹${difference.toFixed(2)}</span> more than total buy-in. This amount needs to be subtracted from players.`;
+          differenceInfo.innerHTML = `Total balance is <span class="positive">${Math.round(difference)}</span> more than total buy-in. This amount needs to be subtracted from players.`;
         } else {
-          differenceInfo.innerHTML = `Total balance is <span class="negative">₹${Math.abs(difference).toFixed(2)}</span> less than total buy-in. This amount needs to be added to players.`;
+          differenceInfo.innerHTML = `Total balance is <span class="negative">${Math.round(Math.abs(difference))}</span> less than total buy-in. This amount needs to be added to players.`;
         }
         
         // Populate player selection dropdowns
@@ -578,12 +540,12 @@
           if (owed.amount === 0) continue;
 
           if (oweAmount <= owed.amount) {
-            settlements.push(`${oweName} pays ${owed.name} ₹${oweAmount.toFixed(2)}`);
+            settlements.push(`${oweName} pays ${owed.name} ${Math.round(oweAmount)}`);
             owed.amount -= oweAmount;
             oweAmount = 0;
             break;
           } else {
-            settlements.push(`${oweName} pays ${owed.name} ₹${owed.amount.toFixed(2)}`);
+            settlements.push(`${oweName} pays ${owed.name} ${Math.round(owed.amount)}`);
             oweAmount -= owed.amount;
             owed.amount = 0;
           }
@@ -660,14 +622,14 @@
         
         row.innerHTML = `
           <td>${nameWithEmoji}</td>
-          <td>₹${player.buyIn.toFixed(2)}</td>
-          <td>₹${player.balance.toFixed(2)}</td>
+          <td>${Math.round(player.buyIn)}</td>
+          <td>${Math.round(player.balance)}</td>
           <td class="${player.adjustment > 0 ? 'positive' : player.adjustment < 0 ? 'negative' : ''}">
-            ${player.adjustment !== 0 ? (player.adjustment > 0 ? '+' : '') + player.adjustment.toFixed(2) : '0.00'}
+            ${player.adjustment !== 0 ? (player.adjustment > 0 ? '+' : '') + Math.round(player.adjustment) : '0'}
           </td>
-          <td>₹${player.finalBalance.toFixed(2)}</td>
+          <td>${Math.round(player.finalBalance)}</td>
           <td class="${netGainLoss > 0 ? 'positive' : netGainLoss < 0 ? 'negative' : ''}">
-            ${netGainLoss > 0 ? '+' : ''}${netGainLoss.toFixed(2)}
+            ${netGainLoss > 0 ? '+' : ''}${Math.round(netGainLoss)}
           </td>
         `;
         
@@ -679,13 +641,13 @@
       totalsRow.className = "total-row";
       totalsRow.innerHTML = `
         <td>Totals</td>
-        <td>₹${totalBuyIn.toFixed(2)}</td>
-        <td>₹${totalBalance.toFixed(2)}</td>
+        <td>${Math.round(totalBuyIn)}</td>
+        <td>${Math.round(totalBalance)}</td>
         <td class="${totalAdjustment > 0 ? 'positive' : totalAdjustment < 0 ? 'negative' : ''}">
-          ${totalAdjustment !== 0 ? (totalAdjustment > 0 ? '+' : '') + totalAdjustment.toFixed(2) : '0.00'}
+          ${totalAdjustment !== 0 ? (totalAdjustment > 0 ? '+' : '') + Math.round(totalAdjustment) : '0'}
         </td>
-        <td>₹${totalFinalBalance.toFixed(2)}</td>
-        <td>₹0.00</td>
+        <td>${Math.round(totalFinalBalance)}</td>
+        <td>0</td>
       `;
       
       tableFoot.innerHTML = "";
@@ -698,31 +660,34 @@
         
         if (adjustmentMethod === "all") {
           if (difference > 0) {
-            actionText = `₹${absDifference.toFixed(2)} was subtracted evenly across all players.`;
+            actionText = `${Math.round(absDifference)} was subtracted evenly across all players.`;
           } else {
-            actionText = `₹${absDifference.toFixed(2)} was added evenly across all players.`;
+            actionText = `${Math.round(absDifference)} was added evenly across all players.`;
           }
         } else if (adjustmentMethod === "single") {
           const playerName = playersData[selectedPlayersForAdjustment[0]].name;
           if (difference > 0) {
-            actionText = `₹${absDifference.toFixed(2)} was subtracted from ${playerName}.`;
+            actionText = `${Math.round(absDifference)} was subtracted from ${playerName}.`;
           } else {
-            actionText = `₹${absDifference.toFixed(2)} was added to ${playerName}.`;
+            actionText = `${Math.round(absDifference)} was added to ${playerName}.`;
           }
         } else if (adjustmentMethod === "multiple") {
           const playerNames = selectedPlayersForAdjustment.map(index => playersData[index].name).join(", ");
           if (difference > 0) {
-            actionText = `₹${absDifference.toFixed(2)} was subtracted evenly from ${playerNames}.`;
+            actionText = `${Math.round(absDifference)} was subtracted evenly from ${playerNames}.`;
           } else {
-            actionText = `₹${absDifference.toFixed(2)} was added evenly to ${playerNames}.`;
+            actionText = `${Math.round(absDifference)} was added evenly to ${playerNames}.`;
           }
         } else {
           if (difference > 0) {
-            actionText = `Total balance was ₹${absDifference.toFixed(2)} more than total buy-in. No adjustment was needed.`;
+            actionText = `Total balance was ${Math.round(absDifference)} more than total buy-in. No adjustment was needed.`;
           } else {
-            actionText = `Total balance was ₹${absDifference.toFixed(2)} less than total buy-in. No adjustment was needed.`;
+            actionText = `Total balance was ${Math.round(absDifference)} less than total buy-in. No adjustment was needed.`;
           }
         }
+        
+        // Add note about incorrect calculation
+        actionText += " Adjustment was made due to incorrect calculation of final balances.";
         
         actionInfo.innerHTML = actionText;
         actionInfo.style.display = "block";
@@ -731,83 +696,69 @@
       }
     }
     
-    function exportSnapshot() {
+    function exportPDF() {
       // Show loading indicator
       const originalText = document.querySelector('.export-btn').textContent;
-      document.querySelector('.export-btn').textContent = 'Generating...';
+      document.querySelector('.export-btn').textContent = 'Generating PDF...';
       
-      // Create a custom export content with simplified table
-      const snapshotContainer = document.getElementById("snapshot-container");
-      snapshotContainer.innerHTML = '';
+      // Create a new PDF document with A4 size
+      const doc = new jsPDF('p', 'mm', 'a4');
       
-      // Create a simplified version for export
-      const exportContent = document.createElement('div');
-      exportContent.style.padding = '20px';
-      exportContent.style.backgroundColor = 'white';
-      exportContent.style.color = 'black';
-      exportContent.style.fontFamily = 'Arial, sans-serif';
+      // Set margins
+      const margin = 15;
+      let yPosition = margin;
       
       // Add title
-      const title = document.createElement('h2');
-      title.textContent = 'Lokal Seenz Poker Payouts Summary';
-      title.style.textAlign = 'center';
-      title.style.marginBottom = '20px';
-      exportContent.appendChild(title);
+      doc.setFontSize(18);
+      doc.setTextColor(40, 40, 40);
+      doc.setFont(undefined, 'bold');
+      doc.text("Poker Payouts Summary", 105, yPosition, { align: "center" });
+      yPosition += 12;
+      
+      // Add date with day name
+      const now = new Date();
+      const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+      const dateStr = `${dayNames[now.getDay()]}, ${monthNames[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
+      
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.setFont(undefined, 'normal');
+      doc.text(dateStr, 105, yPosition, { align: "center" });
+      yPosition += 10;
       
       // Add action info if exists
       const actionInfo = document.getElementById("actionInfo");
+      
       if (actionInfo.style.display !== 'none') {
-        const infoDiv = document.createElement('div');
-        infoDiv.style.padding = '10px';
-        infoDiv.style.marginBottom = '15px';
-        infoDiv.style.backgroundColor = '#e7f3ff';
-        infoDiv.style.borderLeft = '4px solid #0066cc';
-        infoDiv.innerHTML = actionInfo.innerHTML;
-        exportContent.appendChild(infoDiv);
+        doc.setFontSize(10);
+        doc.setTextColor(80, 80, 80);
+        // Split text into multiple lines to prevent overflow
+        const splitText = doc.splitTextToSize(actionInfo.textContent, 170);
+        doc.text(splitText, margin, yPosition);
+        yPosition += splitText.length * 5 + 10;
       }
       
-      // Create simplified table for export
-      const table = document.createElement('table');
-      table.className = 'export-table';
+      // Add player summary table
+      doc.setFontSize(12);
+      doc.setTextColor(40, 40, 40);
+      doc.setFont(undefined, 'bold');
+      doc.text("Player Summary", margin, yPosition);
+      yPosition += 8;
       
-      // Create header
-      const thead = document.createElement('thead');
-      const headerRow = document.createElement('tr');
-      ['Player', 'Buy-In', 'Balance', 'Adjustment', 'Final', 'Net'].forEach(text => {
-        const th = document.createElement('th');
-        th.textContent = text;
-        headerRow.appendChild(th);
-      });
-      thead.appendChild(headerRow);
-      table.appendChild(thead);
-      
-      // Create body
-      const tbody = document.createElement('tbody');
-      playersData.forEach(player => {
+      // Prepare table data
+      const tableData = playersData.map(player => {
         const netGainLoss = player.finalBalance - player.buyIn;
-        const row = document.createElement('tr');
-        
-        // Add emojis for biggest winner and loser
-        let nameWithEmoji = player.name;
-        if (player.name === playersData.reduce((max, p) => (p.finalBalance - p.buyIn) > (max.finalBalance - max.buyIn) ? p : playersData[0]).name && netGainLoss > 0) {
-          nameWithEmoji += " 🤑";
-        } else if (player.name === playersData.reduce((min, p) => (p.finalBalance - p.buyIn) < (min.finalBalance - min.buyIn) ? p : playersData[0]).name && netGainLoss < 0) {
-          nameWithEmoji += " 🤕";
-        }
-        
-        row.innerHTML = `
-          <td class="name-col">${nameWithEmoji}</td>
-          <td class="data-col">₹${player.buyIn.toFixed(2)}</td>
-          <td class="data-col">₹${player.balance.toFixed(2)}</td>
-          <td class="data-col ${player.adjustment > 0 ? 'positive' : player.adjustment < 0 ? 'negative' : ''}">
-            ${player.adjustment !== 0 ? (player.adjustment > 0 ? '+' : '') + player.adjustment.toFixed(2) : '0.00'}
-          </td>
-          <td class="data-col">₹${player.finalBalance.toFixed(2)}</td>
-          <td class="data-col ${netGainLoss > 0 ? 'positive' : netGainLoss < 0 ? 'negative' : ''}">
-            ${netGainLoss > 0 ? '+' : ''}${netGainLoss.toFixed(2)}
-          </td>
-        `;
-        tbody.appendChild(row);
+        return [
+          player.name,
+          Math.round(player.buyIn),
+          Math.round(player.balance),
+          player.adjustment !== 0 ? (player.adjustment > 0 ? '+' : '') + Math.round(player.adjustment) : '0',
+          Math.round(player.finalBalance),
+          (netGainLoss > 0 ? '+' : '') + Math.round(netGainLoss)
+        ];
       });
       
       // Add totals row
@@ -816,92 +767,92 @@
       const totalAdjustment = playersData.reduce((sum, player) => sum + player.adjustment, 0);
       const totalFinalBalance = playersData.reduce((sum, player) => sum + player.finalBalance, 0);
       
-      const footerRow = document.createElement('tr');
-      footerRow.style.fontWeight = 'bold';
-      footerRow.style.backgroundColor = '#e9ecef';
-      footerRow.innerHTML = `
-        <td>Totals</td>
-        <td>₹${totalBuyIn.toFixed(2)}</td>
-        <td>₹${totalBalance.toFixed(2)}</td>
-        <td class="${totalAdjustment > 0 ? 'positive' : totalAdjustment < 0 ? 'negative' : ''}">
-          ${totalAdjustment !== 0 ? (totalAdjustment > 0 ? '+' : '') + totalAdjustment.toFixed(2) : '0.00'}
-        </td>
-        <td>₹${totalFinalBalance.toFixed(2)}</td>
-        <td>₹0.00</td>
-      `;
-      tbody.appendChild(footerRow);
+      tableData.push([
+        "TOTALS",
+        Math.round(totalBuyIn),
+        Math.round(totalBalance),
+        totalAdjustment !== 0 ? (totalAdjustment > 0 ? '+' : '') + Math.round(totalAdjustment) : '0',
+        Math.round(totalFinalBalance),
+        "0"
+      ]);
       
-      table.appendChild(tbody);
-      exportContent.appendChild(table);
+      // Create the table
+      doc.autoTable({
+        startY: yPosition,
+        head: [['Player', 'Buy-In', 'Balance', 'Adjustment', 'Final', 'Net']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [66, 139, 202],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 10,
+          halign: 'center',
+          valign: 'middle'
+        },
+        bodyStyles: {
+          fontSize: 10,
+          cellPadding: 3,
+          overflow: 'linebreak',
+          halign: 'center',
+          valign: 'middle'
+        },
+        styles: {
+          cellPadding: 3,
+          fontSize: 10,
+          valign: 'middle',
+          halign: 'center'
+        },
+        columnStyles: {
+          0: { cellWidth: 40, halign: 'left' },
+          1: { cellWidth: 25 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 25 },
+          4: { cellWidth: 25 },
+          5: { cellWidth: 20 }
+        },
+        margin: { top: yPosition },
+        didDrawPage: function(data) {
+          // Add footer to each page
+          doc.setFontSize(8);
+          doc.setTextColor(100, 100, 100);
+          doc.text(`Generated on ${dateStr}`, data.settings.margin.left, doc.internal.pageSize.height - 10);
+        }
+      });
       
-      // Add settlements
+      // Get the Y position after the table
+      let finalY = doc.lastAutoTable.finalY + 10;
+      
+      // Add settlements section if there are any
       const settlementList = document.getElementById("settlementList");
-      if (settlementList.children.length > 0) {
-        const settlementsTitle = document.createElement('h3');
-        settlementsTitle.textContent = 'Settlements:';
-        settlementsTitle.style.marginTop = '20px';
-        exportContent.appendChild(settlementsTitle);
+      if (settlementList.children.length > 0 && settlementList.children[0].textContent !== "No settlements needed. All balances are even.") {
+        doc.setFontSize(12);
+        doc.setTextColor(40, 40, 40);
+        doc.setFont(undefined, 'bold');
+        doc.text("Settlements", margin, finalY);
+        finalY += 8;
         
-        const settlementsList = document.createElement('ul');
-        settlementsList.style.paddingLeft = '20px';
-        
+        // Add each settlement
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
         Array.from(settlementList.children).forEach(item => {
-          const li = document.createElement('li');
-          li.textContent = item.textContent;
-          li.style.marginBottom = '5px';
-          settlementsList.appendChild(li);
+          if (finalY > doc.internal.pageSize.height - 20) {
+            doc.addPage();
+            finalY = margin;
+          }
+          doc.text(`• ${item.textContent}`, margin + 5, finalY);
+          finalY += 5;
         });
-        
-        exportContent.appendChild(settlementsList);
       }
       
-      // Add footer
-      const footer = document.createElement('div');
-      footer.style.marginTop = '20px';
-      footer.style.textAlign = 'center';
-      footer.style.fontSize = '12px';
-      footer.style.color = '#666';
-      footer.textContent = 'Developed by Akash Justin Ovian, Copyright © 2025. All Rights Reserved.';
-      exportContent.appendChild(footer);
+      // Generate filename with current date
+      const fileName = `${monthNames[now.getMonth()]}_${now.getDate()}_${now.getFullYear()}_Poker_Payouts.pdf`;
       
-      snapshotContainer.appendChild(exportContent);
-      snapshotContainer.classList.remove("hidden");
+      // Save the PDF
+      doc.save(fileName);
       
-      // Use html2canvas to capture the export content
-      html2canvas(exportContent, {
-        backgroundColor: '#ffffff',
-        scale: 2,
-        logging: false,
-        useCORS: true
-      }).then(canvas => {
-        // Generate filename with current date
-        const now = new Date();
-        const monthNames = ["January", "February", "March", "April", "May", "June",
-          "July", "August", "September", "October", "November", "December"
-        ];
-        const fileName = `${monthNames[now.getMonth()]}_${now.getDate()}_${now.getFullYear()}_Poker_Payouts.jpg`;
-        
-        // Create download link
-        const link = document.createElement("a");
-        link.download = fileName;
-        link.href = canvas.toDataURL("image/jpeg", 0.9);
-        
-        // Trigger download
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Hide the snapshot container again
-        snapshotContainer.classList.add("hidden");
-        snapshotContainer.innerHTML = "";
-        
-        // Restore button text
-        document.querySelector('.export-btn').textContent = originalText;
-      }).catch(error => {
-        console.error('Error generating snapshot:', error);
-        alert('Error generating snapshot. Please try again.');
-        document.querySelector('.export-btn').textContent = originalText;
-      });
+      // Restore button text
+      document.querySelector('.export-btn').textContent = originalText;
     }
 
     function toggleDarkMode() {
